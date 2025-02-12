@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Responsive meta tag -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liquidity Pool Slippage Calculator</title>
+  <!-- Import Inter font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* Global box sizing */
+    * {
+      box-sizing: border-box;
+    }
+    /* Keyframes for fade-in animation */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    /* Base Styles */
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #111111;
+      color: #e0e0e0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      animation: fadeIn 1s ease-in-out;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+      font-size: 2.8em;
+    }
+    h2 {
+      margin: 20px 0;
+      font-size: 2em;
+    }
+    h3 {
+      margin: 10px 0;
+      font-size: 1.5em;
+    }
+    /* Divider styles */
+    .divider {
+      height: 1px;
+      background-color: #444444;
+      width: 100%;
+      margin: 8px 0;
+    }
+    .section-divider {
+      border: none;
+      height: 2px;
+      background-color: #444444;
+      margin: 20px 0;
+    }
+    /* Card Base */
+    .card {
+      background-color: #1a1a1a;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 15px;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      margin-bottom: 20px;
+    }
+    .card:hover {
+      background-color: #222222;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.7);
+    }
+    /* HEX Logo Style */
+    .ticker-logo {
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    /* Tooltip Styles */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: help;
+      color: #e0e0e0;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 180px;
+      background-color: #333333;
+      color: #fff;
+      text-align: center;
+      border-radius: 4px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -90px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 0.85em;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* Flex layout for the calculator area */
+    .calc-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .calc-input, .calc-output {
+      flex: 1;
+      min-width: 300px;
+    }
+    /* Input styling */
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #333333;
+      border-radius: 4px;
+      background-color: #111111;
+      color: #e0e0e0;
+      font-size: 1em;
+      margin: 10px 0;
+    }
+    /* Output styling */
+    .output {
+      background-color: #1a1a1a;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: left;
+      line-height: 1.6;
+    }
+    /* Button styling */
+    button {
+      background-color: #222222;
+      color: #e0e0e0;
+      border: 1px solid #333333;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #333333;
+    }
+    /* HEX Market Data Card */
+    .market-card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      background-color: #1a1a1a;
+      margin-bottom: 20px;
+    }
+    .market-card img {
+      width: 48px;
+      height: 48px;
+    }
+    .market-card .market-details {
+      text-align: left;
+    }
+    /* Mobile Overrides */
+    @media (max-width: 768px) {
+      .calc-container {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Liquidity Pool Slippage Calculator</h1>
+    
+    <!-- HEX Market Data Card -->
+    <div class="market-card card">
+      <img src="https://cdn.prod.website-files.com/67a0cb20a913364adf0401a8/67a8ee842d83a860ecc48477_HEXagon.svg" alt="HEX Logo" />
+      <div class="market-details">
+        <h3>HEX Market Data</h3>
+        <p>Price: $<span id="hexMarketPrice">Loading...</span></p>
+        <p>Liquidity: $<span id="hexLiquidity">Loading...</span></p>
+      </div>
+    </div>
+    
+    <!-- Calculator Section: Inputs and Outputs -->
+    <div class="calc-container">
+      <!-- Input Section -->
+      <div class="calc-input card">
+        <h2>Input Parameters</h2>
+        <label for="tokenReserve">Token Reserve (HEX tokens):</label>
+        <!-- Example default: 394,088,669 tokens (~$8m at $0.02028 each) -->
+        <input type="number" id="tokenReserve" value="394088669" step="any" />
+        
+        <label for="usdcReserve">USDC Reserve ($):</label>
+        <!-- Example default: $8,000,000 -->
+        <input type="number" id="usdcReserve" value="8000000" step="any" />
+        
+        <label for="tradeType">Trade Type:</label>
+        <select id="tradeType" onchange="toggleTradeInput()">
+          <option value="sell">Sell (HEX In, USDC Out)</option>
+          <option value="buy">Buy (USDC In, HEX Out)</option>
+        </select>
+        
+        <label for="tradeAmount" id="tradeAmountLabel">Trade Amount (HEX):</label>
+        <!-- For a sell order, example default: 200,000,000 tokens -->
+        <input type="number" id="tradeAmount" value="200000000" step="any" />
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <button onclick="calculateSlippage()">Calculate</button>
+        </div>
+      </div>
+      
+      <!-- Output Section -->
+      <div class="calc-output card">
+        <h2>Calculation Results</h2>
+        <div class="output">
+          <p><strong>Initial Price:</strong> $<span id="initialPrice">0</span> per HEX</p>
+          <p><strong>Effective Price:</strong> $<span id="effectivePrice">0</span> per HEX</p>
+          <p><strong>Slippage:</strong> <span id="slippage">0</span>%</p>
+          <p><strong>Output Received:</strong> <span id="outputReceived">0</span> <span id="outputUnit">USDC</span></p>
+          <p><strong>Loss:</strong> <span id="loss">0</span> <span id="lossUnit">USDC</span></p>
+          <p><strong>New Spot Price:</strong> $<span id="newSpotPrice">0</span> per HEX</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Toggle the label and output units based on trade type.
+    function toggleTradeInput() {
+      var tradeType = document.getElementById('tradeType').value;
+      var tradeAmountLabel = document.getElementById('tradeAmountLabel');
+      var outputUnit = document.getElementById('outputUnit');
+      var lossUnit = document.getElementById('lossUnit');
+      if(tradeType === 'sell'){
+        tradeAmountLabel.innerText = "Trade Amount (HEX):";
+        outputUnit.innerText = "USDC";
+        lossUnit.innerText = "USDC";
+      } else {
+        tradeAmountLabel.innerText = "Trade Amount (USDC):";
+        outputUnit.innerText = "HEX";
+        lossUnit.innerText = "HEX";
+      }
+    }
+    
+    // Main calculation function.
+    function calculateSlippage() {
+      // Get input values.
+      var tokenReserve = parseFloat(document.getElementById('tokenReserve').value);
+      var usdcReserve = parseFloat(document.getElementById('usdcReserve').value);
+      var tradeType = document.getElementById('tradeType').value;
+      var tradeAmount = parseFloat(document.getElementById('tradeAmount').value);
+      
+      // Constant product invariant: k = x * y.
+      var k = tokenReserve * usdcReserve;
+      
+      // Initial price: USDC per HEX.
+      var initialPrice = usdcReserve / tokenReserve;
+      
+      var effectivePrice = 0,
+          outputReceived = 0,
+          slippagePercent = 0,
+          loss = 0,
+          newSpotPrice = 0;
+      
+      if(tradeType === 'sell'){
+        // Sell: add HEX tokens, remove USDC.
+        var newTokenReserve = tokenReserve + tradeAmount;
+        var newUsdcReserve = k / newTokenReserve;
+        outputReceived = usdcReserve - newUsdcReserve;
+        effectivePrice = outputReceived / tradeAmount;
+        slippagePercent = ((initialPrice - effectivePrice) / initialPrice) * 100;
+        // Loss: difference between what would be received at the initial price vs. actual.
+        loss = (tradeAmount * initialPrice) - outputReceived;
+        newSpotPrice = newUsdcReserve / newTokenReserve;
+      } else {
+        // Buy: add USDC, remove HEX tokens.
+        var newUsdcReserve = usdcReserve + tradeAmount;
+        var newTokenReserve = k / newUsdcReserve;
+        outputReceived = tokenReserve - newTokenReserve; // HEX received.
+        effectivePrice = tradeAmount / outputReceived;
+        slippagePercent = ((effectivePrice - initialPrice) / initialPrice) * 100;
+        // Loss (in HEX): expected HEX at initial price minus actual HEX received.
+        loss = (tradeAmount / initialPrice) - outputReceived;
+        newSpotPrice = newUsdcReserve / newTokenReserve;
+      }
+      
+      // Update outputs.
+      document.getElementById('initialPrice').innerText = initialPrice.toFixed(6);
+      document.getElementById('effectivePrice').innerText = effectivePrice.toFixed(6);
+      document.getElementById('slippage').innerText = slippagePercent.toFixed(2);
+      document.getElementById('outputReceived').innerText = outputReceived.toFixed(6);
+      document.getElementById('loss').innerText = loss.toFixed(6);
+      document.getElementById('newSpotPrice').innerText = newSpotPrice.toFixed(6);
+    }
+    
+    // Fetch HEX data from Dexscreener API.
+    function fetchHexData() {
+      var hexContract = "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39";
+      var url = "https://api.dexscreener.com/latest/dex/tokens/" + hexContract;
+      
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.pairs && data.pairs.length > 0) {
+            var pairData = data.pairs[0];
+            var price = parseFloat(pairData.priceUsd) || 0;
+            var liquidity = pairData.liquidity && pairData.liquidity.usd ? parseFloat(pairData.liquidity.usd) : 0;
+            document.getElementById('hexMarketPrice').innerText = price.toFixed(6);
+            document.getElementById('hexLiquidity').innerText = liquidity.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          } else {
+            document.getElementById('hexMarketPrice').innerText = "N/A";
+            document.getElementById('hexLiquidity').innerText = "N/A";
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching HEX data:", error);
+          document.getElementById('hexMarketPrice').innerText = "Error";
+          document.getElementById('hexLiquidity').innerText = "Error";
+        });
+    }
+    
+    // Initialize
+    toggleTradeInput();
+    fetchHexData();
+  </script>
+</body>
+</html>
