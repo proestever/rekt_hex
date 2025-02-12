@@ -178,6 +178,11 @@
     .market-card .market-details {
       text-align: left;
     }
+    /* Pool Ratio Card */
+    .pool-ratio {
+      text-align: center;
+      padding: 15px;
+    }
     /* Mobile Overrides */
     @media (max-width: 768px) {
       .calc-container {
@@ -196,8 +201,16 @@
       <div class="market-details">
         <h3>HEX Market Data</h3>
         <p>Price: $<span id="hexMarketPrice">Loading...</span></p>
-        <p>Liquidity: $<span id="hexLiquidity">Loading...</span></p>
+        <p>Total Liquidity: $<span id="hexTotalLiquidity">Loading...</span></p>
       </div>
+    </div>
+    
+    <!-- Pool Ratio Card (Calculated from Total Liquidity) -->
+    <div class="pool-ratio card">
+      <h2>Pool Ratio</h2>
+      <p>Total Liquidity: $<span id="totalLiquidityDisplay">0</span></p>
+      <p>USDC Reserve (50%): $<span id="usdcReserveDisplay">0</span></p>
+      <p>HEX Reserve: <span id="tokenReserveDisplay">0</span> HEX</p>
     </div>
     
     <!-- Calculator Section: Inputs and Outputs -->
@@ -205,13 +218,13 @@
       <!-- Input Section -->
       <div class="calc-input card">
         <h2>Input Parameters</h2>
-        <label for="tokenReserve">Token Reserve (HEX tokens):</label>
-        <!-- Example default: 394,088,669 tokens (~$8m at $0.02028 each) -->
-        <input type="number" id="tokenReserve" value="394088669" step="any" />
+        <label for="tokenReserve">Token Reserve (HEX):</label>
+        <!-- This field will be auto‑populated from the pool ratio calculation -->
+        <input type="number" id="tokenReserveInput" value="0" step="any" />
         
         <label for="usdcReserve">USDC Reserve ($):</label>
-        <!-- Example default: $8,000,000 -->
-        <input type="number" id="usdcReserve" value="8000000" step="any" />
+        <!-- This field will be auto‑populated from the pool ratio calculation -->
+        <input type="number" id="usdcReserveInput" value="0" step="any" />
         
         <label for="tradeType">Trade Type:</label>
         <select id="tradeType" onchange="toggleTradeInput()">
@@ -220,7 +233,7 @@
         </select>
         
         <label for="tradeAmount" id="tradeAmountLabel">Trade Amount (HEX):</label>
-        <!-- For a sell order, example default: 200,000,000 tokens -->
+        <!-- Default trade amount -->
         <input type="number" id="tradeAmount" value="200000000" step="any" />
         
         <div style="text-align: center; margin-top: 20px;">
@@ -252,20 +265,20 @@
       var lossUnit = document.getElementById('lossUnit');
       if(tradeType === 'sell'){
         tradeAmountLabel.innerText = "Trade Amount (HEX):";
-        outputUnit.innerText = "USDC";
-        lossUnit.innerText = "USDC";
+        if(outputUnit) outputUnit.innerText = "USDC";
+        if(lossUnit) lossUnit.innerText = "USDC";
       } else {
         tradeAmountLabel.innerText = "Trade Amount (USDC):";
-        outputUnit.innerText = "HEX";
-        lossUnit.innerText = "HEX";
+        if(outputUnit) outputUnit.innerText = "HEX";
+        if(lossUnit) lossUnit.innerText = "HEX";
       }
     }
     
     // Main calculation function.
     function calculateSlippage() {
       // Get input values.
-      var tokenReserve = parseFloat(document.getElementById('tokenReserve').value);
-      var usdcReserve = parseFloat(document.getElementById('usdcReserve').value);
+      var tokenReserve = parseFloat(document.getElementById('tokenReserveInput').value);
+      var usdcReserve = parseFloat(document.getElementById('usdcReserveInput').value);
       var tradeType = document.getElementById('tradeType').value;
       var tradeAmount = parseFloat(document.getElementById('tradeAmount').value);
       
@@ -312,7 +325,7 @@
       document.getElementById('newSpotPrice').innerText = newSpotPrice.toFixed(6);
     }
     
-    // Fetch HEX data from Dexscreener API.
+    // Fetch HEX market data from Dexscreener and update pool ratio.
     function fetchHexData() {
       var hexContract = "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39";
       var url = "https://api.dexscreener.com/latest/dex/tokens/" + hexContract;
@@ -323,22 +336,39 @@
           if (data && data.pairs && data.pairs.length > 0) {
             var pairData = data.pairs[0];
             var price = parseFloat(pairData.priceUsd) || 0;
-            var liquidity = pairData.liquidity && pairData.liquidity.usd ? parseFloat(pairData.liquidity.usd) : 0;
+            var totalLiquidity = pairData.liquidity && pairData.liquidity.usd ? parseFloat(pairData.liquidity.usd) : 0;
+            
+            // Update HEX Market Data Card.
             document.getElementById('hexMarketPrice').innerText = price.toFixed(6);
-            document.getElementById('hexLiquidity').innerText = liquidity.toLocaleString(undefined, { maximumFractionDigits: 2 });
+            document.getElementById('hexTotalLiquidity').innerText = totalLiquidity.toLocaleString(undefined, { maximumFractionDigits: 2 });
+            
+            // Calculate pool ratio:
+            // Assume 50% of total liquidity is USDC, and the other 50% is in HEX.
+            var halfLiquidity = totalLiquidity / 2;
+            var computedUSDCReserve = halfLiquidity;           // USDC Reserve = half the total liquidity.
+            var computedTokenReserve = halfLiquidity / price;    // HEX Reserve = (half liquidity) divided by HEX price.
+            
+            // Update Pool Ratio Card.
+            document.getElementById('totalLiquidityDisplay').innerText = totalLiquidity.toLocaleString(undefined, { maximumFractionDigits: 2 });
+            document.getElementById('usdcReserveDisplay').innerText = computedUSDCReserve.toLocaleString(undefined, { maximumFractionDigits: 2 });
+            document.getElementById('tokenReserveDisplay').innerText = computedTokenReserve.toLocaleString(undefined, { maximumFractionDigits: 0 });
+            
+            // Also update the default values for the calculator inputs.
+            document.getElementById('usdcReserveInput').value = computedUSDCReserve;
+            document.getElementById('tokenReserveInput').value = computedTokenReserve;
           } else {
             document.getElementById('hexMarketPrice').innerText = "N/A";
-            document.getElementById('hexLiquidity').innerText = "N/A";
+            document.getElementById('hexTotalLiquidity').innerText = "N/A";
           }
         })
         .catch(error => {
           console.error("Error fetching HEX data:", error);
           document.getElementById('hexMarketPrice').innerText = "Error";
-          document.getElementById('hexLiquidity').innerText = "Error";
+          document.getElementById('hexTotalLiquidity').innerText = "Error";
         });
     }
     
-    // Initialize
+    // Initialize functions.
     toggleTradeInput();
     fetchHexData();
   </script>
